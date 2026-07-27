@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_NAME="$(basename "$0")"
+
+DEFAULT_SANDBOX_USER="developer"
+DEFAULT_SSH_KEY_PATH="$HOME/.ssh/sandbox_key"
+KEY_COMMENT="sandbox-ssh-key"
+
+SANDBOX_IP="${SANDBOX_IP:-}"
+SANDBOX_USER="${SANDBOX_USER:-$DEFAULT_SANDBOX_USER}"
+SSH_KEY_PATH="${SSH_KEY_PATH:-$DEFAULT_SSH_KEY_PATH}"
+
+usage() {
+    cat <<EOF
+Usage: $SCRIPT_NAME --ip <ip> [--user <user>] [--key <path>]
+
+Generate a fresh SSH key pair and install it on a DevNet sandbox VM, so you
+can connect without typing the VM password again. Safe to re-run against a
+new sandbox reservation -- the key at SSH_KEY_PATH is overwritten each time.
+
+Flags (take precedence over the matching environment variable):
+  --ip <ip>       Sandbox VM IP address.                 [env: SANDBOX_IP]   (required)
+  --user <user>   SSH username on the sandbox VM.         [env: SANDBOX_USER] (default: ${DEFAULT_SANDBOX_USER})
+  --key <path>    Local private key path to generate/use. [env: SSH_KEY_PATH] (default: ${DEFAULT_SSH_KEY_PATH})
+  -h, --help      Show this help message.
+
+You'll be prompted for the sandbox VM's password once, to authorize the new key.
+
+Examples:
+  $SCRIPT_NAME --ip 10.10.20.15
+  $SCRIPT_NAME --ip 10.10.20.15 --user admin
+  SANDBOX_IP=10.10.20.15 $SCRIPT_NAME
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --ip)
+            SANDBOX_IP="$2"
+            shift 2
+            ;;
+        --user)
+            SANDBOX_USER="$2"
+            shift 2
+            ;;
+        --key)
+            SSH_KEY_PATH="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$SANDBOX_IP" ]]; then
+    echo "Error: sandbox IP is required (--ip or SANDBOX_IP)." >&2
+    usage >&2
+    exit 1
+fi
+
+# Define ControlPath for SSH connection sharing
+# Using %r@%h:%p ensures a unique path per user/host/port
+CONTROL_PATH="/tmp/ssh_mux_%r@%h:%p"
+mkdir -p "$(dirname "$CONTROL_PATH")"
+
+echo "=== Setting up SSH key for $SANDBOX_USER@$SANDBOX_IP ==="
+echo "Using SSH key path: $SSH_KEY_PATH"
+
+echo "Establishing control connection and removing any existing sandbox key from remote host..."
+# StrictHostKeyChecking=no and UserKnownHostsFile=/dev/null are needed because each
+# DevNet sandbox reservation creates a fresh VM with a new host key.
+ssh -o ControlMaster=auto -o ControlPersist=10s -o ControlPath="$CONTROL_PATH" \
+    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    "$SANDBOX_USER@$SANDBOX_IP" \
+    "mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys && sed -i \"/${KEY_COMMENT}/d\" ~/.ssh/authorized_keys"
+echo "✓ Control connection established and old keys removed"
+
+# Trap to ensure control master is closed on exit
+trap 'ssh -O exit -o ControlPath="$CONTROL_PATH" "$SANDBOX_USER@$SANDBOX_IP" 2>/dev/null || true' EXIT
+
+echo "Generating new SSH key pair, overwriting if exists..."
+mkdir -p "$(dirname "$SSH_KEY_PATH")"
+echo "✓ Local SSH directory ready: $(dirname "$SSH_KEY_PATH")"
+
+if [ -f "$SSH_KEY_PATH" ]; then
+    echo "Removing existing SSH key: $SSH_KEY_PATH"
+    rm -f "$SSH_KEY_PATH" "$SSH_KEY_PATH.pub"
+fi
+
+ssh-keygen -t rsa -b 4096 -C "$KEY_COMMENT" -f "$SSH_KEY_PATH" -N ""
+echo "✓ SSH key pair generated successfully"
+
+echo "Copying new public key to remote host (reusing control connection)..."
+ssh-copy-id -o ControlPath="$CONTROL_PATH" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    -f -i "$SSH_KEY_PATH.pub" "$SANDBOX_USER@$SANDBOX_IP"
+echo "✓ Public key copied to remote host"
+
+echo -e "\033[32m=== SSH setup completed successfully! ===\033[0m"
+echo "Connect with: ssh -i $SSH_KEY_PATH $SANDBOX_USER@$SANDBOX_IP"
