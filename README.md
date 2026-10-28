@@ -3,24 +3,37 @@
 Personal dotfiles and CLI helpers, installed via symlinks so edits here take
 effect immediately without reinstalling.
 
+## What's inside
+
+| Tool                                                        | What it does                                              | Install                    |
+| ----------------------------------------------------------- | --------------------------------------------------------- | -------------------------- |
+| [`sandbox-ssh`](#sandbox-ssh)                               | Sets up key-based SSH to a DevNet sandbox VM              | `make install-sandbox-ssh` |
+| [`agents/AGENTS.md`](#agentsagentsmd)                       | One global instruction file shared by all AI agents       | `make install-agents`      |
+| [`cursor/markdown-preview.css`](#cursormarkdown-previewcss) | Centered, width-capped Markdown preview in Cursor/VS Code | per project (manual)       |
+
+---
+
 ## Setup
 
 ```sh
 make install
 ```
 
-Symlinks every tool below into `~/.local/bin` (make sure it's on your `PATH`).
-Each tool also has its own `install-<tool>` target if you only want that one,
-e.g. `make install-sandbox-ssh`.
+Installs every tool above (`sandbox-ssh` is symlinked into `~/.local/bin` —
+make sure it's on your `PATH`). Each tool also has its own `install-<tool>`
+target if you only want that one, e.g. `make install-sandbox-ssh`. Run
+`make help` to list them.
 
-## Tools
+---
 
-### sandbox-ssh
+## sandbox-ssh
 
 Generates a fresh local SSH key pair and installs it on a DevNet sandbox VM,
 so you can connect without re-typing the VM password on every use. Safe to
 re-run against a new sandbox reservation — the key is overwritten each time,
 so you don't accumulate stale keys for VMs that no longer exist.
+
+### Usage
 
 ```sh
 sandbox-ssh --ip 10.10.20.15
@@ -29,14 +42,18 @@ sandbox-ssh --ip 10.10.20.15 --key ~/.ssh/other_key
 sandbox-ssh --help
 ```
 
-| Flag     | Env var        | Default               | Required |
-| -------- | -------------- | ---------------------- | -------- |
-| `--ip`   | `SANDBOX_IP`   | —                       | yes      |
-| `--user` | `SANDBOX_USER` | `developer`             | no       |
-| `--key`  | `SSH_KEY_PATH` | `~/.ssh/sandbox_key`    | no       |
+### Options
+
+| Flag     | Env var        | Default              | Required |
+| -------- | -------------- | -------------------- | -------- |
+| `--ip`   | `SANDBOX_IP`   | —                    | yes      |
+| `--user` | `SANDBOX_USER` | `developer`          | no       |
+| `--key`  | `SSH_KEY_PATH` | `~/.ssh/sandbox_key` | no       |
 
 Flags take precedence over the matching environment variable. You'll be
 prompted for the sandbox VM's password once, to authorize the new key.
+
+### Origin
 
 This is a standalone fork of the SSH setup script used in the
 [XRd-Sandbox](https://github.com/CiscoDevNet/XRd-Sandbox) repo
@@ -44,31 +61,43 @@ This is a standalone fork of the SSH setup script used in the
 sandbox VM. The two are intentionally not kept in sync — `XRd-Sandbox`'s
 copy stays project-specific for teaching purposes.
 
-### agents/AGENTS.md
+---
+
+## agents/AGENTS.md
 
 Single source of truth for global instructions that apply to every AI agent
-on this machine. Edit only this file, then run:
+on this machine.
+
+### Usage
+
+Edit only this file, then run:
 
 ```sh
 make install-agents
 ```
 
+### Where it's linked
+
 `scripts/link-agents.sh` symlinks it to each tool's global instruction file
 (an existing regular file is moved to `*.bak.<timestamp>` first):
 
-| Tool                          | Symlink                                  |
-| ----------------------------- | ---------------------------------------- |
-| Claude Code                   | `~/.claude/CLAUDE.md`                    |
-| VS Code Copilot / Copilot CLI | `~/.copilot/copilot-instructions.md`     |
+| Tool                          | Symlink                              |
+| ----------------------------- | ------------------------------------ |
+| Claude Code                   | `~/.claude/CLAUDE.md`                |
+| VS Code Copilot / Copilot CLI | `~/.copilot/copilot-instructions.md` |
 
 To support another tool, add its path to `TARGETS` in the script.
 
-### cursor/markdown-preview.css
+---
+
+## cursor/markdown-preview.css
 
 Reading-mode layout for Cursor/VS Code's Markdown preview: caps the body
 width and centers it, instead of text stretching edge-to-edge.
 
-**To enable in a new project**, run from the project root:
+### Enable in a new project
+
+Run from the project root:
 
 ```sh
 mkdir -p .vscode
@@ -94,15 +123,18 @@ Reload the Markdown preview (`Cmd+Shift+V`, close and reopen) to see it.
 Edit `cursor/markdown-preview.css` here and every project symlinking to it
 picks up the change immediately — no reinstall step needed.
 
-**Why a symlink instead of a direct path:** Cursor/VS Code only allows a
-workspace's `markdown.styles` setting to load CSS files that live *inside
-that workspace* (security restriction — a repo's own `.vscode/settings.json`
-can't be allowed to point at arbitrary files on disk). The symlink satisfies
-that rule while still keeping this one file as the single source of truth.
+### Why a symlink
 
-**Pairs with:** the global `markdown.preview.fontSize` setting (controls
-preview text size, currently `20`), set directly in
-`~/Library/Application Support/Cursor/User/settings.json`. That setting is
-global — set once, it applies to every project automatically, so there's
-nothing to repeat per-project. It isn't tracked in this repo because that
-settings.json file bundles a lot of unrelated machine-specific config.
+Cursor/VS Code only allows a workspace's `markdown.styles` setting to load
+CSS files that live _inside_ that workspace (it won't point at arbitrary
+files on disk). The symlink satisfies that rule while still keeping this one
+file as the single source of truth.
+
+### Related setting
+
+The global `markdown.preview.fontSize` setting controls preview text size
+(currently `20`). It lives in
+`~/Library/Application Support/Cursor/User/settings.json`. It's global — set
+once, it applies to every project, so there's nothing to repeat per project.
+It isn't tracked in this repo because that settings.json bundles a lot of
+unrelated machine-specific config.
