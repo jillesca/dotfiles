@@ -1,0 +1,6 @@
+/* Reading-mode layout for the Markdown preview: centered column, book-like width. */
+body {
+  max-width: 650px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
