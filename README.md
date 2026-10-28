@@ -5,11 +5,12 @@ effect immediately without reinstalling.
 
 ## Tools
 
-| Tool                                                      | Purpose                                                   | Install                    |
-| --------------------------------------------------------- | --------------------------------------------------------- | -------------------------- |
-| [`sandbox-ssh`](docs/sandbox-ssh.md)                      | Sets up key-based SSH to a DevNet sandbox VM              | `make install-sandbox-ssh` |
-| [`agents/AGENTS.md`](docs/agents.md)                      | One global instruction file shared by all AI agents       | `make install-agents`      |
-| [`cursor/markdown-preview.css`](docs/markdown-preview.md) | Centered, width-capped Markdown preview in Cursor/VS Code | per project (manual)       |
+| Tool                                                      | Purpose                                                           | Install                    |
+| --------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------- |
+| [`sandbox-ssh`](docs/sandbox-ssh.md)                      | Sets up key-based SSH to a DevNet sandbox VM                      | `make install-sandbox-ssh` |
+| [`agents/AGENTS.md`](docs/agents.md)                      | One global instruction file shared by all AI agents               | `make install-agents`      |
+| [`hooks/`](docs/hooks.md)                                 | Copilot hook that formats/lints/type-checks files the agent edits | `make install-hooks`       |
+| [`cursor/markdown-preview.css`](docs/markdown-preview.md) | Centered, width-capped Markdown preview in Cursor/VS Code         | per project (manual)       |
 
 Click a tool for usage, options and background.
 

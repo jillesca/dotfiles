@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "command": "export PATH=\"/opt/homebrew/bin:$HOME/.local/bin:$PATH\"; python3 \"$HOME/.copilot/hooks/format-lint/format_lint.py\"",
+        "timeoutSec": 60
+      }
+    ]
+  }
+}
